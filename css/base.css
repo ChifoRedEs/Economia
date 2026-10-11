@@ -1,0 +1,37 @@
+/* Agenda de Finanzas: variables de tema, reset y utilidades */
+:root{
+  --bg:#EEF2F0;--surface:#FFFFFF;--surface-2:#F4F7F5;--ink:#13233A;--muted:#5D6B7E;--line:#DCE3E0;
+  --brand:#155E52;--brand-ink:#FFFFFF;--brand-soft:#D9ECE6;--note:#155E52;
+  --inc:#0F8A61;--exp:#C93652;--warn:#B57A06;--warn-soft:#FBEFD2;--exp-soft:#F9E0E5;
+  --overlay:rgba(13,21,34,.45);
+  --r-lg:24px;--r-md:16px;--r-sm:10px;
+  --f-ui:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"Sora","Manrope",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1522;--surface:#152131;--surface-2:#1B293C;--ink:#E8EEF5;--muted:#95A3B5;--line:#26364B;
+    --brand:#4DBFA5;--brand-ink:#08201B;--brand-soft:#173B37;--note:#17594D;
+    --inc:#3CC793;--exp:#F07188;--warn:#F2C14E;--warn-soft:#3A3017;--exp-soft:#3D1F28;
+    --overlay:rgba(0,0,0,.6);color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1522;--surface:#152131;--surface-2:#1B293C;--ink:#E8EEF5;--muted:#95A3B5;--line:#26364B;
+  --brand:#4DBFA5;--brand-ink:#08201B;--brand-soft:#173B37;--note:#17594D;
+  --inc:#3CC793;--exp:#F07188;--warn:#F2C14E;--warn-soft:#3A3017;--exp-soft:#3D1F28;
+  --overlay:rgba(0,0,0,.6);color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-ui);-webkit-font-smoothing:antialiased;min-height:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.amt,.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.pos{color:var(--inc)}.neg{color:var(--exp)}.mut{color:var(--muted)}
+
