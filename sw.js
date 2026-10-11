@@ -1,20 +1,30 @@
-/* Service worker de Agenda de Finanzas: permite usar la app sin conexión.
-   Cambia VERSION cada vez que subas cambios importantes para renovar la caché. */
-const VERSION = 'finanzas-v2';
-const SHELL = [
+/* Service worker de Agenda de Finanzas.
+   Estrategia: la app completa se guarda en caché al instalar y se sirve desde ahí (arranque instantáneo
+   y sin conexión). Cada vez que publiques cambios, sube VERSION: el navegador descargará la versión
+   nueva en segundo plano y la usará la próxima vez que abras la app. */
+const VERSION = 'finanzas-v3';
+const APP = [
   './', './index.html', './manifest.json',
-  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
-  './icons/maskable-192.png', './icons/maskable-512.png',
-  './icons/apple-touch-icon.png', './icons/favicon-32.png'
+  './css/base.css', './css/layout.css', './css/components.css',
+  './js/main.js', './js/actions.js',
+  './js/core/utils.js', './js/core/format.js', './js/core/constants.js', './js/core/store.js', './js/core/calc.js',
+  './js/ui/state.js', './js/ui/dom.js', './js/ui/components.js', './js/ui/render.js',
+  './js/views/home.js', './js/views/movements.js', './js/views/book.js', './js/views/stats.js', './js/views/settings.js',
+  './js/sheets/movement.js', './js/sheets/account.js', './js/sheets/category.js', './js/sheets/recurring.js',
+  './js/features/io.js', './js/features/pwa.js', './js/lib/chart-loader.js',
+  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-192.png',
+  './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'
 ];
 const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'];
+const EXTERNAL = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(VERSION);
-    await Promise.allSettled(SHELL.map(u => cache.add(u)));
+    // cache: 'reload' evita copiar archivos antiguos de la caché HTTP del navegador.
+    await cache.addAll(APP.map(u => new Request(u, { cache: 'reload' })));
     await Promise.allSettled(CDN.map(u => fetch(u, { mode: 'cors' }).then(r => r.ok && cache.put(u, r))));
-    self.skipWaiting();
+    await self.skipWaiting();
   })());
 });
 
@@ -31,34 +41,39 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Páginas: primero la red (para recibir actualizaciones) y, sin conexión, la copia guardada.
+  // Navegación: la página guardada de esta versión (coherente con sus módulos).
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const cache = await caches.open(VERSION);
-      try {
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      } catch (e) {
-        return (await cache.match(req, { ignoreSearch: true })) ||
-               (await cache.match('./index.html')) || (await cache.match('./')) ||
-               new Response('Sin conexión', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-      }
+      return (await cache.match('./index.html')) || fetch(req).catch(() =>
+        new Response('Sin conexión', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
     })());
     return;
   }
 
-  // Archivos propios, Chart.js y tipografías: copia guardada al instante y se actualiza en segundo plano.
-  const cacheable = url.origin === location.origin ||
-    ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname);
-  if (!cacheable) return;
-  event.respondWith((async () => {
-    const cache = await caches.open(VERSION);
-    const cached = await cache.match(req);
-    const network = fetch(req).then(res => {
-      if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+  // Archivos de la app: primero la caché; si falta, red y se guarda.
+  if (url.origin === location.origin) {
+    event.respondWith((async () => {
+      const cache = await caches.open(VERSION);
+      const hit = await cache.match(req, { ignoreSearch: true });
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res.ok) cache.put(req, res.clone());
       return res;
-    }).catch(() => cached);
-    return cached || network;
-  })());
+    })());
+    return;
+  }
+
+  // Chart.js y tipografías: copia guardada al instante y actualización en segundo plano.
+  if (EXTERNAL.includes(url.hostname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(VERSION);
+      const cached = await cache.match(req);
+      const network = fetch(req).then(res => {
+        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+        return res;
+      }).catch(() => cached);
+      return cached || network;
+    })());
+  }
 });
